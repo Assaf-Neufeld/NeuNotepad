@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<SyntaxDefinition name="JSON" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+    <!-- VS Code inspired JSON color scheme -->
+    <Color name="PropertyKey" foreground="#0451A5" fontWeight="bold" />
+    <Color name="String" foreground="#A31515" />
+    <Color name="Number" foreground="#098658" />
+    <Color name="Boolean" foreground="#0000FF" fontWeight="bold" />
+    <Color name="Null" foreground="#CC00CC" fontWeight="bold" fontStyle="italic" />
+    <Color name="ArrayBrackets" foreground="#0080FF" fontWeight="bold" />
+    <Color name="ObjectBraces" foreground="#AF00DB" fontWeight="bold" />
+    <Color name="Colon" foreground="#000000" fontWeight="bold" />
+    <Color name="Comma" foreground="#666666" />
+    <Color name="EscapeSequence" foreground="#EE0000" fontWeight="bold" />
+
+    <RuleSet ignoreCase="false">
+        <!-- Property keys (strings followed by colon) -->
+        <Rule color="PropertyKey">
+            "(?:[^"\\]|\\.)*"\s*(?=:)
+        </Rule>
+        
+        <!-- String values with escape sequence highlighting -->
+        <Span color="String">
+            <Begin>"</Begin>
+            <End>"</End>
+            <RuleSet>
+                <!-- Escape sequences: \n, \r, \t, \\, \", \/, \uXXXX -->
+                <Rule color="EscapeSequence">
+                    \\["\\/bfnrt]|\\u[0-9a-fA-F]{4}
+                </Rule>
+            </RuleSet>
+        </Span>
+        
+        <!-- Boolean values -->
+        <Keywords color="Boolean">
+            <Word>true</Word>
+            <Word>false</Word>
+        </Keywords>
+        
+        <!-- Null -->
+        <Keywords color="Null">
+            <Word>null</Word>
+        </Keywords>
+        
+        <!-- Numbers (integers, floats, scientific notation) -->
+        <Rule color="Number">
+            -?\b\d+(\.\d+)?([eE][+-]?\d+)?\b
+        </Rule>
+        
+        <!-- Object braces -->
+        <Rule color="ObjectBraces">
+            [{}]
+        </Rule>
+        
+        <!-- Array brackets -->
+        <Rule color="ArrayBrackets">
+            [\[\]]
+        </Rule>
+        
+        <!-- Colon separator -->
+        <Rule color="Colon">
+            :
+        </Rule>
+        
+        <!-- Comma separator -->
+        <Rule color="Comma">
+            ,
+        </Rule>
+    </RuleSet>
+</SyntaxDefinition>
