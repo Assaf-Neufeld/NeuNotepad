@@ -1,4 +1,5 @@
 ﻿using ICSharpCode.AvalonEdit;
+using ICSharpCode.AvalonEdit.Search;
 using NeuNotepad.Highlighting;
 using NeuNotepad.Models;
 using NeuNotepad.ViewModels;
@@ -71,6 +72,16 @@ public partial class MainWindow : Window
     {
         if (sender is TextEditor editor && editor.DataContext is DocumentTab tab)
         {
+            // Enable built-in find (Ctrl+F) for each editor instance
+            try
+            {
+                SearchPanel.Install(editor.TextArea);
+            }
+            catch (InvalidOperationException)
+            {
+                // SearchPanel may already be installed if the editor is reloaded.
+            }
+
             // Apply JSON highlighting if it's a JSON file
             ApplyHighlighting(editor, tab);
             
@@ -141,9 +152,18 @@ public partial class MainWindow : Window
     private static bool IsJsonContent(string content)
     {
         if (string.IsNullOrWhiteSpace(content)) return false;
-        
-        var trimmed = content.TrimStart();
-        return trimmed.StartsWith("{") || trimmed.StartsWith("[");
+
+        // Avoid allocating a trimmed copy of potentially large documents.
+        for (int i = 0; i < content.Length; i++)
+        {
+            var ch = content[i];
+            if (char.IsWhiteSpace(ch))
+                continue;
+
+            return ch == '{' || ch == '[';
+        }
+
+        return false;
     }
 
     private void UpdateEncodingDisplay(DocumentTab tab)

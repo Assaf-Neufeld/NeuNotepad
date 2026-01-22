@@ -157,20 +157,43 @@ public class TitleSummarizationService : IDisposable
 
         try
         {
-            // Craft prompt for title generation - simple and direct
+            // Preprocess content: take first meaningful chunk and clean it up
+            var processedContent = PreprocessContent(content);
+            
+            // Craft prompt for title generation using few-shot examples for better guidance
             var prompt = $"""
+                <|system|>
+                You are a helpful assistant that creates short, descriptive titles for documents. 
+                Create a title that captures the main purpose or topic, not just the first words.
+                <|end|>
                 <|user|>
-                What is the main topic of this text? Reply with exactly 3 or 4 words only. No punctuation:
-                {content}
+                Create a short title (3-5 words) for this text. The title should describe what the document is about, not copy words from it.
+
+                Example 1:
+                Text: "def calculate_sum(a, b): return a + b"
+                Title: Python Addition Function
+
+                Example 2:
+                Text: "Meeting scheduled for Monday at 10am to discuss Q4 budget allocations and team performance reviews"
+                Title: Q4 Budget Meeting Notes
+
+                Example 3:
+                Text: "Dear Customer, Thank you for your purchase. Your order #12345 has been shipped."
+                Title: Order Shipment Confirmation
+
+                Now create a title for this text:
+                {processedContent}
                 <|end|>
                 <|assistant|>
+                Title:
                 """;
 
             var sequences = _tokenizer.Encode(prompt);
 
             using var generatorParams = new GeneratorParams(_model);
-            generatorParams.SetSearchOption("max_length", 512); // Input + output length (support larger content)
-            generatorParams.SetSearchOption("temperature", 0.3); // Low temperature for consistent output
+            generatorParams.SetSearchOption("max_length", 768); // Input + output length (support larger content)
+            generatorParams.SetSearchOption("temperature", 0.5); // Slightly higher for more creative titles
+            generatorParams.SetSearchOption("top_p", 0.9); // Nucleus sampling for better quality
             generatorParams.SetInputSequences(sequences);
 
             var outputTokens = new List<int>();
@@ -184,8 +207,14 @@ public class TitleSummarizationService : IDisposable
                 var token = generator.GetSequence(0)[^1];
                 outputTokens.Add(token);
                 
-                // Stop if we've generated enough
-                if (outputTokens.Count > 20)
+                // Decode incrementally to check for end markers
+                var partialResult = _tokenizer.Decode(outputTokens.ToArray());
+                
+                // Stop if we hit end markers or newline (title complete)
+                if (partialResult.Contains("<|end|>") || 
+                    partialResult.Contains("<|user|>") ||
+                    partialResult.Contains('\n') ||
+                    outputTokens.Count > 30)
                     break;
             }
 
@@ -214,12 +243,19 @@ public class TitleSummarizationService : IDisposable
         // Remove quotes (including smart quotes)
         title = title.Trim('"', '\'', '\u201C', '\u201D', '\u2018', '\u2019');
         
-        // Remove "Title:" prefix if present
-        if (title.StartsWith("Title:", StringComparison.OrdinalIgnoreCase))
-            title = title[6..].Trim();
+        // Remove "Title:" prefix if present (case insensitive, with optional space)
+        var prefixes = new[] { "Title:", "Title ", "title:", "title " };
+        foreach (var prefix in prefixes)
+        {
+            if (title.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                title = title[prefix.Length..].Trim();
+                break;
+            }
+        }
 
         // Remove end tokens if present (do this before word limiting)
-        var endTokens = new[] { "<|end|>", "<|user|>", "<|system|>", "<|assistant|>" };
+        var endTokens = new[] { "<|end|>", "<|user|>", "<|system|>", "<|assistant|>", "\n", "\r" };
         foreach (var endToken in endTokens)
         {
             var idx = title.IndexOf(endToken, StringComparison.OrdinalIgnoreCase);
@@ -227,22 +263,109 @@ public class TitleSummarizationService : IDisposable
                 title = title[..idx].Trim();
         }
 
+        // Remove leading/trailing punctuation that doesn't belong in titles
+        title = title.Trim('.', ',', ':', ';', '-', '_', '!', '?');
+
         // Remove newlines and extra spaces
         title = string.Join(" ", title.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries));
         var words = title.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
-        // Limit to max 4 words (no ellipsis - clean filename)
-        const int maxWords = 4;
+        // Limit to max 5 words for more descriptive titles
+        const int maxWords = 5;
         if (words.Length > maxWords)
             words = words.Take(maxWords).ToArray();
 
         title = string.Join(" ", words);
+
+        // Title case the result for consistency
+        title = ToTitleCase(title);
 
         // Also enforce character limit for safety (no ellipsis)
         if (title.Length > _settings.MaxTitleLength)
             title = title[.._settings.MaxTitleLength].TrimEnd();
 
         return title;
+    }
+
+    private static string ToTitleCase(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return text;
+
+        var words = text.Split(' ');
+        var result = new StringBuilder();
+        
+        // Words that should stay lowercase (unless first word)
+        var lowercaseWords = new HashSet<string>(StringComparer.OrdinalIgnoreCase) 
+        { 
+            "a", "an", "the", "and", "but", "or", "for", "nor", "on", "at", "to", "by", "of", "in" 
+        };
+
+        for (int i = 0; i < words.Length; i++)
+        {
+            var word = words[i];
+            if (string.IsNullOrEmpty(word))
+                continue;
+
+            if (result.Length > 0)
+                result.Append(' ');
+
+            // First word is always capitalized, others follow rules
+            if (i == 0 || !lowercaseWords.Contains(word))
+            {
+                // Capitalize first letter, keep rest as-is (preserves acronyms like API, JSON)
+                result.Append(char.ToUpperInvariant(word[0]));
+                if (word.Length > 1)
+                    result.Append(word[1..]);
+            }
+            else
+            {
+                result.Append(word.ToLowerInvariant());
+            }
+        }
+
+        return result.ToString();
+    }
+
+    private static string PreprocessContent(string content)
+    {
+        if (string.IsNullOrWhiteSpace(content))
+            return string.Empty;
+
+        // Take the first meaningful portion - focus on the beginning where intent is usually clearest
+        var lines = content.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+        var meaningfulLines = new List<string>();
+        var totalChars = 0;
+        const int maxChars = 500; // Focused context for better summarization
+
+        foreach (var line in lines)
+        {
+            var trimmedLine = line.Trim();
+            
+            // Skip empty lines and very short lines (likely formatting)
+            if (trimmedLine.Length < 3)
+                continue;
+                
+            // Skip common boilerplate
+            if (trimmedLine.StartsWith("//") || trimmedLine.StartsWith("#!") || 
+                trimmedLine.StartsWith("using ") || trimmedLine.StartsWith("import ") ||
+                trimmedLine.StartsWith("namespace ") || trimmedLine.StartsWith("package "))
+                continue;
+
+            meaningfulLines.Add(trimmedLine);
+            totalChars += trimmedLine.Length;
+
+            if (totalChars >= maxChars)
+                break;
+        }
+
+        // If we filtered too aggressively, fall back to raw content
+        if (meaningfulLines.Count == 0)
+        {
+            return content.Length > maxChars ? content[..maxChars] : content;
+        }
+
+        return string.Join(" ", meaningfulLines);
     }
 
     private static string ComputeHash(string content)

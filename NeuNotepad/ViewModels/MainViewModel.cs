@@ -7,6 +7,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Buffers;
 using System.Text;
 using System.Windows;
 using System.Windows.Input;
@@ -19,6 +20,10 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     private DocumentTab? _currentTab;
     private TextEditor? _currentEditor;
     private int _tabCounter = 0;
+    
+    // Regex to extract number from "Untitled X" filenames
+    private static readonly System.Text.RegularExpressions.Regex UntitledPattern = 
+        new(@"^Untitled\s+(\d+)$", System.Text.RegularExpressions.RegexOptions.Compiled);
     
     // AI Title Generation
     private readonly AISettings _aiSettings;
@@ -77,6 +82,7 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         if (session != null && session.Tabs.Count > 0)
         {
             RestoreSession(session);
+            UpdateTabCounterFromExistingTabs();
         }
         else
         {
@@ -86,6 +92,24 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
 
         // Load AI model in background if enabled
         InitializeAIAsync();
+    }
+
+    /// <summary>
+    /// Updates _tabCounter to be higher than any existing "Untitled X" tab numbers.
+    /// This prevents duplicate names when creating new tabs after restoring a session.
+    /// </summary>
+    private void UpdateTabCounterFromExistingTabs()
+    {
+        int maxNumber = 0;
+        foreach (var tab in Tabs)
+        {
+            var match = UntitledPattern.Match(tab.FileName);
+            if (match.Success && int.TryParse(match.Groups[1].Value, out int number))
+            {
+                maxNumber = Math.Max(maxNumber, number);
+            }
+        }
+        _tabCounter = maxNumber;
     }
 
     /// <summary>
@@ -275,14 +299,14 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
             }
 
             var encoding = EncodingDetector.DetectEncoding(filePath);
-            var content = File.ReadAllText(filePath, encoding);
 
             var tab = new DocumentTab
             {
                 FilePath = filePath,
                 Encoding = encoding
             };
-            tab.Document.Text = content;
+
+            LoadFileIntoDocument(tab.Document, filePath, encoding);
             tab.IsModified = false;
 
             Tabs.Add(tab);
@@ -296,6 +320,60 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         {
             MessageBox.Show($"Error opening file: {ex.Message}", "Error", 
                 MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private static void LoadFileIntoDocument(ICSharpCode.AvalonEdit.Document.TextDocument document, string filePath, Encoding encoding)
+    {
+        using var stream = new FileStream(
+            filePath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.ReadWrite,
+            bufferSize: 128 * 1024,
+            options: FileOptions.SequentialScan);
+
+        using var reader = new StreamReader(
+            stream,
+            encoding,
+            detectEncodingFromByteOrderMarks: false,
+            bufferSize: 128 * 1024,
+            leaveOpen: false);
+
+        var undo = document.UndoStack;
+        var previousSizeLimit = undo.SizeLimit;
+        undo.SizeLimit = 0;
+
+        document.BeginUpdate();
+        try
+        {
+            if (document.TextLength > 0)
+            {
+                document.Remove(0, document.TextLength);
+            }
+
+            char[] charBuffer = ArrayPool<char>.Shared.Rent(128 * 1024);
+            try
+            {
+                while (true)
+                {
+                    var charsRead = reader.Read(charBuffer, 0, charBuffer.Length);
+                    if (charsRead <= 0)
+                        break;
+
+                    document.Insert(document.TextLength, new string(charBuffer, 0, charsRead));
+                }
+            }
+            finally
+            {
+                ArrayPool<char>.Shared.Return(charBuffer);
+            }
+        }
+        finally
+        {
+            document.EndUpdate();
+            undo.ClearAll();
+            undo.SizeLimit = previousSizeLimit;
         }
     }
 
