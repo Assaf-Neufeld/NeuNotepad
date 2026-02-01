@@ -254,7 +254,7 @@ public partial class MainWindow : Window
         }
         
         // If we're here, it's the empty area - create a new tab
-        _viewModel.NewCommand.Execute(null);
+        _viewModel.NewCommand?.Execute(null);
         e.Handled = true;
     }
 }
