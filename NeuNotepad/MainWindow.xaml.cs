@@ -7,6 +7,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace NeuNotepad;
@@ -225,5 +226,35 @@ public partial class MainWindow : Window
         {
             _viewModel.GenerateTitleForTab(tab);
         }
+    }
+
+    private void TabControl_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        // Check if the double-click was on the empty area (not on a TabItem)
+        // We need to check if the original source is the TabControl or its panel,
+        // and not a TabItem or any of its child elements
+        var originalSource = e.OriginalSource as DependencyObject;
+        
+        // Walk up the visual tree to see if we hit a TabItem
+        while (originalSource != null)
+        {
+            if (originalSource is TabItem)
+            {
+                // Double-click was on a tab item, not the empty area
+                return;
+            }
+            
+            if (originalSource == TabControl)
+            {
+                // Reached the TabControl without hitting a TabItem - this is the empty area
+                break;
+            }
+            
+            originalSource = VisualTreeHelper.GetParent(originalSource);
+        }
+        
+        // If we're here, it's the empty area - create a new tab
+        _viewModel.NewCommand?.Execute(null);
+        e.Handled = true;
     }
 }
