@@ -301,7 +301,7 @@
         </Border>
         
         <!-- Tab Control -->
-        <TabControl x:Name="TabControl" Grid.Row="2" SelectionChanged="TabControl_SelectionChanged">
+        <TabControl x:Name="TabControl" Grid.Row="2" SelectionChanged="TabControl_SelectionChanged" MouseDoubleClick="TabControl_MouseDoubleClick">
             <TabControl.ItemTemplate>
                 <DataTemplate>
                     <StackPanel Orientation="Horizontal">
