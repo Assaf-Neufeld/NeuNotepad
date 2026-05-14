@@ -4,10 +4,14 @@
         xmlns:avalonedit="http://icsharpcode.net/sharpdevelop/avalonedit"
         xmlns:converters="clr-namespace:NeuNotepad.Converters"
         Title="NeuNotepad" Height="700" Width="1000"
+        MinHeight="520" MinWidth="760"
         WindowStartupLocation="CenterScreen"
-        Background="#F5F5F5"
+        Background="{DynamicResource AppBackgroundBrush}"
+        FontFamily="Segoe UI"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType"
         Icon="Assets/app.ico">
-    
+
     <Window.InputBindings>
         <KeyBinding Key="N" Modifiers="Control" Command="{Binding NewCommand}" />
         <KeyBinding Key="O" Modifiers="Control" Command="{Binding OpenCommand}" />
@@ -18,224 +22,252 @@
         <KeyBinding Key="W" Modifiers="Control" Command="{Binding CloseTabCommand}" />
         <KeyBinding Key="F" Modifiers="Control+Shift" Command="{Binding FormatJsonCommand}" />
     </Window.InputBindings>
-    
+
     <Window.Resources>
-        <!-- Converters -->
         <converters:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibility"/>
-        
-        <!-- Color Palette -->
-        <SolidColorBrush x:Key="PrimaryColor" Color="#4682B4"/>
-        <SolidColorBrush x:Key="PrimaryDarkColor" Color="#36648B"/>
-        <SolidColorBrush x:Key="AccentColor" Color="#FF6B35"/>
-        <SolidColorBrush x:Key="BackgroundColor" Color="#F5F5F5"/>
-        <SolidColorBrush x:Key="SurfaceColor" Color="#FFFFFF"/>
-        <SolidColorBrush x:Key="TextColor" Color="#333333"/>
-        <SolidColorBrush x:Key="TextSecondaryColor" Color="#666666"/>
-        
-        <!-- Menu Style -->
+
+        <Color x:Key="InkColor">#18222F</Color>
+        <Color x:Key="MutedInkColor">#5B6673</Color>
+        <Color x:Key="LineColor">#DDE4EA</Color>
+        <Color x:Key="ChromeColor">#EEF3F6</Color>
+        <Color x:Key="SurfaceColor">#FFFFFF</Color>
+        <Color x:Key="SurfaceRaisedColor">#FAFCFD</Color>
+        <Color x:Key="PrimaryColor">#2F6F73</Color>
+        <Color x:Key="PrimaryHoverColor">#255B5F</Color>
+        <Color x:Key="PrimaryPressedColor">#1E4B4F</Color>
+        <Color x:Key="AccentColor">#F36B3B</Color>
+        <Color x:Key="AccentHoverColor">#DC5930</Color>
+        <Color x:Key="AccentPressedColor">#C64C29</Color>
+
+        <SolidColorBrush x:Key="AppBackgroundBrush" Color="{StaticResource ChromeColor}"/>
+        <SolidColorBrush x:Key="InkBrush" Color="{StaticResource InkColor}"/>
+        <SolidColorBrush x:Key="MutedInkBrush" Color="{StaticResource MutedInkColor}"/>
+        <SolidColorBrush x:Key="LineBrush" Color="{StaticResource LineColor}"/>
+        <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource SurfaceColor}"/>
+        <SolidColorBrush x:Key="SurfaceRaisedBrush" Color="{StaticResource SurfaceRaisedColor}"/>
+        <SolidColorBrush x:Key="PrimaryBrush" Color="{StaticResource PrimaryColor}"/>
+        <SolidColorBrush x:Key="PrimaryHoverBrush" Color="{StaticResource PrimaryHoverColor}"/>
+        <SolidColorBrush x:Key="PrimaryPressedBrush" Color="{StaticResource PrimaryPressedColor}"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}"/>
+        <SolidColorBrush x:Key="AccentHoverBrush" Color="{StaticResource AccentHoverColor}"/>
+        <SolidColorBrush x:Key="AccentPressedBrush" Color="{StaticResource AccentPressedColor}"/>
+
+        <DropShadowEffect x:Key="SoftShadow" BlurRadius="18" ShadowDepth="2" Direction="270" Opacity="0.10" Color="#203040"/>
+
         <Style TargetType="Menu">
-            <Setter Property="Background" Value="{StaticResource PrimaryColor}"/>
+            <Setter Property="Background" Value="#243238"/>
             <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Padding" Value="4"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="8,0"/>
+            <Setter Property="Height" Value="34"/>
         </Style>
-        
+
         <Style TargetType="MenuItem">
             <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="Padding" Value="11,7"/>
+            <Setter Property="FontSize" Value="13"/>
             <Style.Triggers>
                 <Trigger Property="IsHighlighted" Value="True">
-                    <Setter Property="Background" Value="{StaticResource PrimaryDarkColor}"/>
+                    <Setter Property="Background" Value="#34454C"/>
                 </Trigger>
                 <Trigger Property="Role" Value="SubmenuItem">
-                    <Setter Property="Foreground" Value="{StaticResource TextColor}"/>
+                    <Setter Property="Foreground" Value="{StaticResource InkBrush}"/>
+                    <Setter Property="Padding" Value="14,8"/>
                 </Trigger>
                 <Trigger Property="Role" Value="SubmenuHeader">
-                    <Setter Property="Foreground" Value="{StaticResource TextColor}"/>
+                    <Setter Property="Foreground" Value="{StaticResource InkBrush}"/>
+                    <Setter Property="Padding" Value="14,8"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
-        
-        <!-- Toolbar Style -->
-        <Style TargetType="ToolBar">
-            <Setter Property="Background" Value="{StaticResource SurfaceColor}"/>
-            <Setter Property="Padding" Value="4"/>
+
+        <Style x:Key="CommandButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="{StaticResource InkBrush}"/>
+            <Setter Property="Padding" Value="11,7"/>
+            <Setter Property="Margin" Value="0,0,4,0"/>
+            <Setter Property="MinHeight" Value="34"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#E9F0F2"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="#D7E2E6"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#DDE9EC"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.42"/>
+                                <Setter Property="Cursor" Value="Arrow"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
-        
-        <!-- Toolbar Button Style -->
-        <Style x:Key="ToolbarButton" TargetType="Button">
+
+        <Style x:Key="PrimaryCommandButton" TargetType="Button" BasedOn="{StaticResource CommandButton}">
+            <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="14,7"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{StaticResource AccentHoverBrush}"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource AccentHoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{StaticResource AccentPressedBrush}"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource AccentPressedBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.42"/>
+                                <Setter Property="Cursor" Value="Arrow"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="CommandIcon" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Margin" Value="0,0,7,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="CommandLabel" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="ToolbarSeparator" TargetType="Rectangle">
+            <Setter Property="Width" Value="1"/>
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="Fill" Value="{StaticResource LineBrush}"/>
+            <Setter Property="Margin" Value="8,0,12,0"/>
+        </Style>
+
+        <Style x:Key="TabGlyphButton" TargetType="Button">
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="Margin" Value="5,0,0,0"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="10,6"/>
-            <Setter Property="Margin" Value="2,0"/>
-            <Setter Property="Foreground" Value="{StaticResource TextColor}"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Foreground" Value="{StaticResource MutedInkBrush}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" 
-                                Background="{TemplateBinding Background}" 
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="4"
-                                Padding="{TemplateBinding Padding}">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="11">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#E8E8E8"/>
+                                <Setter TargetName="border" Property="Background" Value="#E5ECEF"/>
+                                <Setter Property="Foreground" Value="{StaticResource InkBrush}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#D0D0D0"/>
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Opacity" Value="0.5"/>
+                                <Setter TargetName="border" Property="Background" Value="#D7E2E6"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
-        
-        <!-- JSON Button Style (Accent) -->
-        <Style x:Key="JsonButton" TargetType="Button" BasedOn="{StaticResource ToolbarButton}">
-            <Setter Property="Background" Value="{StaticResource AccentColor}"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" 
-                                Background="{TemplateBinding Background}" 
-                                CornerRadius="4"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#E55A2B"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#CC4F25"/>
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Opacity" Value="0.5"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
+
+        <Style x:Key="TabCloseButton" TargetType="Button" BasedOn="{StaticResource TabGlyphButton}">
+            <Setter Property="ToolTip" Value="Close tab"/>
         </Style>
-        
-        <!-- Tab Close Button -->
-        <Style x:Key="TabCloseButton" TargetType="Button">
-            <Setter Property="Width" Value="18"/>
-            <Setter Property="Height" Value="18"/>
-            <Setter Property="Margin" Value="6,0,0,0"/>
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="9">
-                            <TextBlock Text="×" FontSize="14" FontWeight="Bold" 
-                                       HorizontalAlignment="Center" VerticalAlignment="Center" 
-                                       Foreground="#888" Margin="0,-2,0,0"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#FFCCCC"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-        
-        <!-- Tab AI Generate Button -->
-        <Style x:Key="TabAIButton" TargetType="Button">
-            <Setter Property="Width" Value="18"/>
-            <Setter Property="Height" Value="18"/>
-            <Setter Property="Margin" Value="4,0,0,0"/>
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Cursor" Value="Hand"/>
+
+        <Style x:Key="TabAIButton" TargetType="Button" BasedOn="{StaticResource TabGlyphButton}">
             <Setter Property="ToolTip" Value="Generate AI title"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="9">
-                            <TextBlock Text="✨" FontSize="11" 
-                                       HorizontalAlignment="Center" VerticalAlignment="Center" 
-                                       Margin="0,-1,0,0"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#E8F4FD"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
+            <Setter Property="Foreground" Value="{StaticResource PrimaryBrush}"/>
         </Style>
-        
-        <!-- TabControl Style -->
+
         <Style TargetType="TabControl">
-            <Setter Property="Background" Value="{StaticResource SurfaceColor}"/>
-            <Setter Property="BorderBrush" Value="#E0E0E0"/>
-            <Setter Property="BorderThickness" Value="0,1,0,0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="0"/>
         </Style>
-        
-        <!-- TabItem Style -->
+
         <Style TargetType="TabItem">
-            <Setter Property="Background" Value="#EEEEEE"/>
-            <Setter Property="BorderBrush" Value="#DDDDDD"/>
-            <Setter Property="Foreground" Value="{StaticResource TextColor}"/>
-            <Setter Property="Padding" Value="12,8"/>
-            <Setter Property="Margin" Value="0,0,1,0"/>
+            <Setter Property="Background" Value="#E7EEF1"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource MutedInkBrush}"/>
+            <Setter Property="Padding" Value="13,8"/>
+            <Setter Property="Margin" Value="0,0,6,0"/>
+            <Setter Property="MinHeight" Value="38"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TabItem">
-                        <Border x:Name="border" 
+                        <Border x:Name="border"
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="1,1,1,0"
-                                CornerRadius="6,6,0,0"
+                                BorderThickness="1"
+                                CornerRadius="7,7,0,0"
                                 Padding="{TemplateBinding Padding}"
-                                Margin="2,4,0,0">
-                            <ContentPresenter ContentSource="Header"/>
+                                Margin="{TemplateBinding Margin}">
+                            <ContentPresenter ContentSource="Header" RecognizesAccessKey="True"/>
                         </Border>
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="{StaticResource SurfaceColor}"/>
-                                <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource PrimaryColor}"/>
-                                <Setter TargetName="border" Property="BorderThickness" Value="1,2,1,0"/>
-                                <Setter TargetName="border" Property="Margin" Value="2,2,0,0"/>
-                            </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#F8F8F8"/>
+                                <Setter TargetName="border" Property="Background" Value="#F3F7F8"/>
+                                <Setter Property="Foreground" Value="{StaticResource InkBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{StaticResource SurfaceBrush}"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource LineBrush}"/>
+                                <Setter Property="Foreground" Value="{StaticResource InkBrush}"/>
+                                <Setter Property="Panel.ZIndex" Value="1"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
-        
-        <!-- StatusBar Style -->
+
         <Style TargetType="StatusBar">
-            <Setter Property="Background" Value="{StaticResource PrimaryColor}"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="Background" Value="#243238"/>
+            <Setter Property="Foreground" Value="#ECF4F5"/>
+            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="MinHeight" Value="30"/>
         </Style>
-        
+
         <Style TargetType="StatusBarItem">
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Padding" Value="4,0"/>
+            <Setter Property="Foreground" Value="#ECF4F5"/>
+            <Setter Property="Padding" Value="6,0"/>
         </Style>
     </Window.Resources>
-    
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -243,8 +275,7 @@
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        
-        <!-- Menu Bar -->
+
         <Menu Grid.Row="0">
             <MenuItem Header="_File">
                 <MenuItem Header="_New" InputGestureText="Ctrl+N" Command="{Binding NewCommand}"/>
@@ -274,8 +305,8 @@
                 <MenuItem Header="_Enable JSON Highlighting" Click="EnableJsonHighlighting_Click"/>
             </MenuItem>
             <MenuItem Header="_AI">
-                <MenuItem Header="_Enable Smart Titles" 
-                          IsCheckable="True" 
+                <MenuItem Header="_Enable Smart Titles"
+                          IsCheckable="True"
                           IsChecked="{Binding SmartTitlesEnabled, Mode=OneWay}"
                           Command="{Binding ToggleSmartTitlesCommand}"/>
                 <MenuItem Header="_Generate Title Now" Command="{Binding GenerateTitleNowCommand}"/>
@@ -283,69 +314,120 @@
                 <MenuItem Header="_Configure Model Path..." Command="{Binding ConfigureAICommand}"/>
             </MenuItem>
         </Menu>
-        
-        <!-- Toolbar -->
-        <Border Grid.Row="1" Background="{StaticResource SurfaceColor}" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1" Padding="8,6">
-            <StackPanel Orientation="Horizontal">
-                <Button Style="{StaticResource ToolbarButton}" Command="{Binding NewCommand}" ToolTip="New (Ctrl+N)" Content="New"/>
-                <Button Style="{StaticResource ToolbarButton}" Command="{Binding OpenCommand}" ToolTip="Open (Ctrl+O)" Content="Open"/>
-                <Button Style="{StaticResource ToolbarButton}" Command="{Binding SaveCommand}" ToolTip="Save (Ctrl+S)" Content="Save"/>
-                <Rectangle Width="1" Fill="#E0E0E0" Margin="8,0"/>
-                <Button Style="{StaticResource ToolbarButton}" Command="{Binding UndoCommand}" ToolTip="Undo (Ctrl+Z)" Content="Undo"/>
-                <Button Style="{StaticResource ToolbarButton}" Command="{Binding RedoCommand}" ToolTip="Redo (Ctrl+Y)" Content="Redo"/>
-                <Rectangle Width="1" Fill="#E0E0E0" Margin="8,0"/>
-                <Button Style="{StaticResource JsonButton}" Command="{Binding FormatJsonCommand}" ToolTip="Format JSON" Content="Format JSON"/>
-                <Rectangle Width="1" Fill="#E0E0E0" Margin="8,0"/>
-                <Button Style="{StaticResource ToolbarButton}" Command="{Binding CloseTabCommand}" ToolTip="Close Tab (Ctrl+W)" Content="Close Tab"/>
-                <Button Style="{StaticResource ToolbarButton}" Command="{Binding CloseAllTabsCommand}" ToolTip="Close All Tabs" Content="Close All"/>
-            </StackPanel>
+
+        <Border Grid.Row="1" Background="{StaticResource SurfaceRaisedBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1" Padding="12,9">
+            <DockPanel LastChildFill="False">
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                    <Button Style="{StaticResource CommandButton}" Command="{Binding NewCommand}" ToolTip="New (Ctrl+N)">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource CommandIcon}" Text="&#xE710;"/>
+                            <TextBlock Style="{StaticResource CommandLabel}" Text="New"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource CommandButton}" Command="{Binding OpenCommand}" ToolTip="Open (Ctrl+O)">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource CommandIcon}" Text="&#xE8E5;"/>
+                            <TextBlock Style="{StaticResource CommandLabel}" Text="Open"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource CommandButton}" Command="{Binding SaveCommand}" ToolTip="Save (Ctrl+S)">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource CommandIcon}" Text="&#xE74E;"/>
+                            <TextBlock Style="{StaticResource CommandLabel}" Text="Save"/>
+                        </StackPanel>
+                    </Button>
+                    <Rectangle Style="{StaticResource ToolbarSeparator}"/>
+                    <Button Style="{StaticResource CommandButton}" Command="{Binding UndoCommand}" ToolTip="Undo (Ctrl+Z)">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource CommandIcon}" Text="&#xE7A7;"/>
+                            <TextBlock Style="{StaticResource CommandLabel}" Text="Undo"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource CommandButton}" Command="{Binding RedoCommand}" ToolTip="Redo (Ctrl+Y)">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource CommandIcon}" Text="&#xE7A6;"/>
+                            <TextBlock Style="{StaticResource CommandLabel}" Text="Redo"/>
+                        </StackPanel>
+                    </Button>
+                    <Rectangle Style="{StaticResource ToolbarSeparator}"/>
+                    <Button Style="{StaticResource PrimaryCommandButton}" Command="{Binding FormatJsonCommand}" ToolTip="Format JSON (Ctrl+Shift+F)">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource CommandIcon}" Text="&#xE8D2;"/>
+                            <TextBlock Style="{StaticResource CommandLabel}" Text="Format JSON"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                    <Button Style="{StaticResource CommandButton}" Command="{Binding CloseTabCommand}" ToolTip="Close Tab (Ctrl+W)">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource CommandIcon}" Text="&#xE711;"/>
+                            <TextBlock Style="{StaticResource CommandLabel}" Text="Close Tab"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource CommandButton}" Command="{Binding CloseAllTabsCommand}" ToolTip="Close All Tabs">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource CommandIcon}" Text="&#xE8BB;"/>
+                            <TextBlock Style="{StaticResource CommandLabel}" Text="Close All"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </DockPanel>
         </Border>
-        
-        <!-- Tab Control -->
-        <TabControl x:Name="TabControl" Grid.Row="2" SelectionChanged="TabControl_SelectionChanged" MouseDoubleClick="TabControl_MouseDoubleClick">
-            <TabControl.ItemTemplate>
-                <DataTemplate>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="{Binding Header}" VerticalAlignment="Center" FontSize="13"/>
-                        <Button Style="{StaticResource TabAIButton}" 
-                                Click="GenerateTitle_Click" 
-                                Tag="{Binding}"
-                                Visibility="{Binding HasBeenSaved, Converter={StaticResource InverseBoolToVisibility}}"/>
-                        <Button Style="{StaticResource TabCloseButton}" 
-                                Click="CloseTab_Click" 
-                                Tag="{Binding}"/>
-                    </StackPanel>
-                </DataTemplate>
-            </TabControl.ItemTemplate>
-            <TabControl.ContentTemplate>
-                <DataTemplate>
-                    <Border Background="{StaticResource SurfaceColor}" CornerRadius="0,0,4,4">
-                        <avalonedit:TextEditor x:Name="Editor"
-                                               FontFamily="Consolas"
-                                               FontSize="14"
-                                               ShowLineNumbers="True"
-                                               WordWrap="True"
-                                               Document="{Binding Document}"
-                                               Loaded="Editor_Loaded"
-                                               Background="{StaticResource SurfaceColor}"
-                                               Padding="4"/>
-                    </Border>
-                </DataTemplate>
-            </TabControl.ContentTemplate>
-        </TabControl>
-        
-        <!-- Status Bar -->
+
+        <Grid Grid.Row="2" Background="{StaticResource AppBackgroundBrush}" Margin="0">
+            <Border Margin="12" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="8" Effect="{StaticResource SoftShadow}">
+                <TabControl x:Name="TabControl" SelectionChanged="TabControl_SelectionChanged" MouseDoubleClick="TabControl_MouseDoubleClick" Padding="8,8,8,0">
+                    <TabControl.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" MinWidth="0">
+                                <TextBlock Text="{Binding Header}" VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="210"/>
+                                <Button Style="{StaticResource TabAIButton}"
+                                        Click="GenerateTitle_Click"
+                                        Tag="{Binding}"
+                                        Visibility="{Binding HasBeenSaved, Converter={StaticResource InverseBoolToVisibility}}">
+                                    <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="11" Text="&#xE945;"/>
+                                </Button>
+                                <Button Style="{StaticResource TabCloseButton}"
+                                        Click="CloseTab_Click"
+                                        Tag="{Binding}">
+                                    <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="10" Text="&#xE711;"/>
+                                </Button>
+                            </StackPanel>
+                        </DataTemplate>
+                    </TabControl.ItemTemplate>
+                    <TabControl.ContentTemplate>
+                        <DataTemplate>
+                            <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,1,0,0" CornerRadius="0,0,8,8">
+                                <avalonedit:TextEditor x:Name="Editor"
+                                                       FontFamily="Cascadia Mono, Consolas"
+                                                       FontSize="14"
+                                                       ShowLineNumbers="True"
+                                                       LineNumbersForeground="#93A0AA"
+                                                       WordWrap="True"
+                                                       Document="{Binding Document}"
+                                                       Loaded="Editor_Loaded"
+                                                       Background="{StaticResource SurfaceBrush}"
+                                                       Foreground="{StaticResource InkBrush}"
+                                                       Padding="10"
+                                                       HorizontalScrollBarVisibility="Auto"
+                                                       VerticalScrollBarVisibility="Auto"/>
+                            </Border>
+                        </DataTemplate>
+                    </TabControl.ContentTemplate>
+                </TabControl>
+            </Border>
+        </Grid>
+
         <StatusBar Grid.Row="3">
             <StatusBarItem>
-                <TextBlock x:Name="StatusText" Text="Ready" FontSize="12"/>
+                <TextBlock x:Name="StatusText" Text="Ready"/>
             </StatusBarItem>
-            <Separator Background="#5A8FC4"/>
-            <StatusBarItem>
-                <TextBlock x:Name="EncodingText" Text="UTF-8" FontSize="12"/>
-            </StatusBarItem>
-            <Separator Background="#5A8FC4"/>
-            <StatusBarItem>
-                <TextBlock x:Name="LineColumnText" Text="Ln 1, Col 1" FontSize="12"/>
+            <StatusBarItem HorizontalAlignment="Right">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock x:Name="EncodingText" Text="UTF-8" Margin="0,0,18,0"/>
+                    <TextBlock x:Name="LineColumnText" Text="Ln 1, Col 1"/>
+                </StackPanel>
             </StatusBarItem>
         </StatusBar>
     </Grid>
