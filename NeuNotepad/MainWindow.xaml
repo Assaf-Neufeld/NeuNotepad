@@ -16,6 +16,7 @@
         <KeyBinding Key="Z" Modifiers="Control" Command="{Binding UndoCommand}" />
         <KeyBinding Key="Y" Modifiers="Control" Command="{Binding RedoCommand}" />
         <KeyBinding Key="W" Modifiers="Control" Command="{Binding CloseTabCommand}" />
+        <KeyBinding Key="F" Modifiers="Control+Shift" Command="{Binding FormatJsonCommand}" />
     </Window.InputBindings>
     
     <Window.Resources>

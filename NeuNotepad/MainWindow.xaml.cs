@@ -45,6 +45,7 @@ public partial class MainWindow : Window
     {
         // Save session state (including unsaved tabs)
         _viewModel.SaveSession();
+        _viewModel.Dispose();
     }
 
     private void TabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)

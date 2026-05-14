@@ -13,20 +13,16 @@
     <Color name="EscapeSequence" foreground="#EE0000" fontWeight="bold" />
 
     <RuleSet ignoreCase="false">
-        <!-- Property keys (strings followed by colon) -->
-        <Rule color="PropertyKey">
-            "(?:[^"\\]|\\.)*"\s*(?=:)
-        </Rule>
+        <!-- Property keys (strings followed by colon) must be checked before generic strings. -->
+        <Rule color="PropertyKey">"(?:[^"\\]|\\.)*"\s*(?=:)</Rule>
         
         <!-- String values with escape sequence highlighting -->
-        <Span color="String">
+        <Span color="String" multiline="false">
             <Begin>"</Begin>
             <End>"</End>
             <RuleSet>
                 <!-- Escape sequences: \n, \r, \t, \\, \", \/, \uXXXX -->
-                <Rule color="EscapeSequence">
-                    \\["\\/bfnrt]|\\u[0-9a-fA-F]{4}
-                </Rule>
+                <Rule color="EscapeSequence">\\["\\/bfnrt]|\\u[0-9a-fA-F]{4}</Rule>
             </RuleSet>
         </Span>
         
@@ -42,28 +38,18 @@
         </Keywords>
         
         <!-- Numbers (integers, floats, scientific notation) -->
-        <Rule color="Number">
-            -?\b\d+(\.\d+)?([eE][+-]?\d+)?\b
-        </Rule>
+        <Rule color="Number">-?\b\d+(\.\d+)?([eE][+-]?\d+)?\b</Rule>
         
         <!-- Object braces -->
-        <Rule color="ObjectBraces">
-            [{}]
-        </Rule>
+        <Rule color="ObjectBraces">[{}]</Rule>
         
         <!-- Array brackets -->
-        <Rule color="ArrayBrackets">
-            [\[\]]
-        </Rule>
+        <Rule color="ArrayBrackets">[\[\]]</Rule>
         
         <!-- Colon separator -->
-        <Rule color="Colon">
-            :
-        </Rule>
+        <Rule color="Colon">:</Rule>
         
         <!-- Comma separator -->
-        <Rule color="Comma">
-            ,
-        </Rule>
+        <Rule color="Comma">,</Rule>
     </RuleSet>
 </SyntaxDefinition>
