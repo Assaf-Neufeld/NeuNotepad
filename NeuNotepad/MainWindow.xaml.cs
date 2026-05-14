@@ -18,6 +18,7 @@ namespace NeuNotepad;
 public partial class MainWindow : Window
 {
     private readonly MainViewModel _viewModel;
+    private bool _viewModelDisposed;
 
     public MainWindow()
     {
@@ -39,13 +40,30 @@ public partial class MainWindow : Window
         
         // Save session on close
         Closing += MainWindow_Closing;
+        Closed += MainWindow_Closed;
     }
 
     private void MainWindow_Closing(object? sender, CancelEventArgs e)
     {
         // Save session state (including unsaved tabs)
         _viewModel.SaveSession();
+    }
+
+    private void MainWindow_Closed(object? sender, EventArgs e)
+    {
+        DisposeViewModel();
+        Application.Current.Shutdown(0);
+    }
+
+    private void DisposeViewModel()
+    {
+        if (_viewModelDisposed)
+        {
+            return;
+        }
+
         _viewModel.Dispose();
+        _viewModelDisposed = true;
     }
 
     private void TabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
