@@ -7,6 +7,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace NeuNotepad;
@@ -60,6 +61,50 @@ public partial class MainWindow : Window
                 _viewModel.SetCurrentEditor(editor);
             }
         }
+    }
+
+    private void TabControl_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Left || e.OriginalSource is not DependencyObject source)
+        {
+            return;
+        }
+
+        if (FindVisualParent<TabItem>(source) != null || !IsPointInTabHeaderArea(e.GetPosition(TabControl)))
+        {
+            return;
+        }
+
+        if (_viewModel.NewCommand.CanExecute(null))
+        {
+            _viewModel.NewCommand.Execute(null);
+            e.Handled = true;
+        }
+    }
+
+    private bool IsPointInTabHeaderArea(Point point)
+    {
+        const double emptyTabStripHeight = 36;
+
+        var firstTab = TabsFirstContainer();
+        if (firstTab == null)
+        {
+            return point.Y <= emptyTabStripHeight;
+        }
+
+        var tabBounds = firstTab.TransformToAncestor(TabControl)
+            .TransformBounds(new Rect(firstTab.RenderSize));
+        return point.Y <= tabBounds.Bottom;
+    }
+
+    private TabItem? TabsFirstContainer()
+    {
+        if (TabControl.Items.Count == 0)
+        {
+            return null;
+        }
+
+        return TabControl.ItemContainerGenerator.ContainerFromIndex(0) as TabItem;
     }
 
     private void EnableJsonHighlighting_Click(object sender, RoutedEventArgs e)
@@ -216,6 +261,22 @@ public partial class MainWindow : Window
             var result = FindVisualChild<T>(child);
             if (result != null) return result;
         }
+        return null;
+    }
+
+    private static T? FindVisualParent<T>(DependencyObject child) where T : DependencyObject
+    {
+        var parent = VisualTreeHelper.GetParent(child);
+        while (parent != null)
+        {
+            if (parent is T typedParent)
+            {
+                return typedParent;
+            }
+
+            parent = VisualTreeHelper.GetParent(parent);
+        }
+
         return null;
     }
 
