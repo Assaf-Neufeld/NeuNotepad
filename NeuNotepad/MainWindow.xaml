@@ -21,6 +21,7 @@
         <KeyBinding Key="Y" Modifiers="Control" Command="{Binding RedoCommand}" />
         <KeyBinding Key="W" Modifiers="Control" Command="{Binding CloseTabCommand}" />
         <KeyBinding Key="F" Modifiers="Control+Shift" Command="{Binding FormatJsonCommand}" />
+        <KeyBinding Key="M" Modifiers="Control+Shift" Command="{Binding ToggleMarkdownPreviewCommand}" />
     </Window.InputBindings>
 
     <Window.Resources>
@@ -145,6 +146,42 @@
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="border" Property="Background" Value="{StaticResource AccentPressedBrush}"/>
                                 <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource AccentPressedBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.42"/>
+                                <Setter Property="Cursor" Value="Arrow"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PreviewCommandButton" TargetType="Button" BasedOn="{StaticResource CommandButton}">
+            <Setter Property="Background" Value="{StaticResource PrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="14,7"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{StaticResource PrimaryHoverBrush}"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource PrimaryHoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{StaticResource PrimaryPressedBrush}"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource PrimaryPressedBrush}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.42"/>
@@ -304,6 +341,9 @@
                 <Separator/>
                 <MenuItem Header="_Enable JSON Highlighting" Click="EnableJsonHighlighting_Click"/>
             </MenuItem>
+            <MenuItem Header="_Markdown">
+                <MenuItem Header="_Toggle Preview" InputGestureText="Ctrl+Shift+M" Click="ToggleMarkdownPreview_Click"/>
+            </MenuItem>
             <MenuItem Header="_AI">
                 <MenuItem Header="_Enable Smart Titles"
                           IsCheckable="True"
@@ -356,6 +396,12 @@
                             <TextBlock Style="{StaticResource CommandLabel}" Text="Format JSON"/>
                         </StackPanel>
                     </Button>
+                    <Button Style="{StaticResource PreviewCommandButton}" Click="ToggleMarkdownPreview_Click" ToolTip="Toggle Markdown Preview (Ctrl+Shift+M)">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource CommandIcon}" Text="&#xE8A7;"/>
+                            <TextBlock Style="{StaticResource CommandLabel}" Text="Preview MD"/>
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
@@ -399,19 +445,27 @@
                     <TabControl.ContentTemplate>
                         <DataTemplate>
                             <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,1,0,0" CornerRadius="0,0,8,8">
-                                <avalonedit:TextEditor x:Name="Editor"
-                                                       FontFamily="Cascadia Mono, Consolas"
-                                                       FontSize="14"
-                                                       ShowLineNumbers="True"
-                                                       LineNumbersForeground="#93A0AA"
-                                                       WordWrap="True"
-                                                       Document="{Binding Document}"
-                                                       Loaded="Editor_Loaded"
-                                                       Background="{StaticResource SurfaceBrush}"
-                                                       Foreground="{StaticResource InkBrush}"
-                                                       Padding="10"
-                                                       HorizontalScrollBarVisibility="Auto"
-                                                       VerticalScrollBarVisibility="Auto"/>
+                                <Grid>
+                                    <avalonedit:TextEditor x:Name="Editor"
+                                                           FontFamily="Cascadia Mono, Consolas"
+                                                           FontSize="14"
+                                                           ShowLineNumbers="True"
+                                                           LineNumbersForeground="#93A0AA"
+                                                           WordWrap="True"
+                                                           Document="{Binding Document}"
+                                                           Loaded="Editor_Loaded"
+                                                           Background="{StaticResource SurfaceBrush}"
+                                                           Foreground="{StaticResource InkBrush}"
+                                                           Padding="10"
+                                                           HorizontalScrollBarVisibility="Auto"
+                                                           VerticalScrollBarVisibility="Auto"/>
+                                    <FlowDocumentScrollViewer x:Name="MarkdownPreview"
+                                                              Visibility="Collapsed"
+                                                              Background="{StaticResource SurfaceBrush}"
+                                                              VerticalScrollBarVisibility="Auto"
+                                                              Loaded="MarkdownPreview_Loaded"
+                                                              IsToolBarVisible="False"/>
+                                </Grid>
                             </Border>
                         </DataTemplate>
                     </TabControl.ContentTemplate>

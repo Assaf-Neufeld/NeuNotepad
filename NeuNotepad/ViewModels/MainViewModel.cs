@@ -56,6 +56,7 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         SelectAllCommand = new RelayCommand(SelectAll, () => _currentEditor != null);
         
         FormatJsonCommand = new RelayCommand(FormatJson, () => CurrentTab != null);
+        ToggleMarkdownPreviewCommand = new RelayCommand(ToggleMarkdownPreview);
         
         // AI Commands
         ConfigureAICommand = new RelayCommand(ConfigureAI);
@@ -90,8 +91,9 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
             NewFile();
         }
 
-        // Load AI model in background if enabled
-        InitializeAIAsync();
+        StatusChanged?.Invoke(_aiSettings.SmartTitlesEnabled
+            ? "Smart titles enabled; model loads on first title generation"
+            : "Smart titles disabled");
     }
 
     /// <summary>
@@ -110,42 +112,6 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
             }
         }
         _tabCounter = maxNumber;
-    }
-
-    /// <summary>
-    /// Initialize AI model in background without blocking UI.
-    /// </summary>
-    private async void InitializeAIAsync()
-    {
-        if (!_aiSettings.SmartTitlesEnabled)
-        {
-            StatusChanged?.Invoke("Smart titles disabled");
-            return;
-        }
-
-        if (string.IsNullOrEmpty(_aiSettings.ModelPath))
-        {
-            StatusChanged?.Invoke("AI model not configured");
-            return;
-        }
-
-        if (!Directory.Exists(_aiSettings.ModelPath))
-        {
-            StatusChanged?.Invoke($"AI model path not found: {_aiSettings.ModelPath}");
-            return;
-        }
-
-        StatusChanged?.Invoke("Loading AI model...");
-        
-        try
-        {
-            await _titleService.InitializeAsync();
-        }
-        catch (Exception ex)
-        {
-            // Don't crash - just report the error
-            StatusChanged?.Invoke($"AI model failed to load: {ex.Message}");
-        }
     }
 
     private void RestoreSession(SessionState session)
@@ -242,6 +208,7 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     public ICommand PasteCommand { get; }
     public ICommand SelectAllCommand { get; }
     public ICommand FormatJsonCommand { get; }
+    public ICommand ToggleMarkdownPreviewCommand { get; }
     
     // AI Commands
     public ICommand ConfigureAICommand { get; }
@@ -256,7 +223,9 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     public event Action<string>? StatusChanged;
     public event Action<string>? EncodingChanged;
     public event Action<DocumentTab>? TabAdded;
+    public event Action<DocumentTab>? TabClosed;
     public event Action<string>? JsonError;
+    public event Action? MarkdownPreviewToggleRequested;
 
     private void NewFile()
     {
@@ -274,7 +243,7 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     {
         var dialog = new OpenFileDialog
         {
-            Filter = "All Files (*.*)|*.*|Text Files (*.txt)|*.txt|JSON Files (*.json)|*.json",
+            Filter = "All Files (*.*)|*.*|Text Files (*.txt)|*.txt|JSON Files (*.json)|*.json|Markdown Files (*.md;*.markdown)|*.md;*.markdown",
             FilterIndex = 1
         };
 
@@ -402,7 +371,7 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
 
         var dialog = new SaveFileDialog
         {
-            Filter = "All Files (*.*)|*.*|Text Files (*.txt)|*.txt|JSON Files (*.json)|*.json",
+            Filter = "All Files (*.*)|*.*|Text Files (*.txt)|*.txt|JSON Files (*.json)|*.json|Markdown Files (*.md;*.markdown)|*.md;*.markdown",
             FilterIndex = 1,
             FileName = suggestedName
         };
@@ -470,8 +439,11 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
             }
         }
 
+        CleanupTabResources(tab);
+
         var index = Tabs.IndexOf(tab);
         Tabs.Remove(tab);
+        TabClosed?.Invoke(tab);
 
         if (Tabs.Count > 0)
         {
@@ -544,6 +516,18 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
             JsonError?.Invoke(errorMsg);
             StatusChanged?.Invoke("JSON formatting failed");
         }
+    }
+
+    private void ToggleMarkdownPreview()
+    {
+        if (CurrentTab == null)
+        {
+            StatusChanged?.Invoke("Markdown preview: no active tab");
+            return;
+        }
+
+        StatusChanged?.Invoke($"Markdown preview requested for {CurrentTab.FileName}");
+        MarkdownPreviewToggleRequested?.Invoke();
     }
 
     private static string GetEncodingName(Encoding encoding)
@@ -713,9 +697,6 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
                     _aiSettings.Save();
                     OnPropertyChanged(nameof(ModelPath));
                     StatusChanged?.Invoke($"AI model path set to: {modelFolder}");
-                    
-                    // Reinitialize the service
-                    _ = _titleService.InitializeAsync();
                 }
                 else
                 {
@@ -738,15 +719,9 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         
         if (_aiSettings.SmartTitlesEnabled)
         {
-            StatusChanged?.Invoke("Smart Titles enabled");
-            if (!string.IsNullOrEmpty(_aiSettings.ModelPath))
-            {
-                _ = _titleService.InitializeAsync();
-            }
-            else
-            {
-                StatusChanged?.Invoke("Smart Titles enabled - configure model path first");
-            }
+            StatusChanged?.Invoke(!string.IsNullOrEmpty(_aiSettings.ModelPath)
+                ? "Smart Titles enabled; model loads on first title generation"
+                : "Smart Titles enabled - configure model path first");
         }
         else
         {

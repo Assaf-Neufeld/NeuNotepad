@@ -2,11 +2,13 @@
 using ICSharpCode.AvalonEdit.Search;
 using NeuNotepad.Highlighting;
 using NeuNotepad.Models;
+using NeuNotepad.Services;
 using NeuNotepad.ViewModels;
 using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 
@@ -18,6 +20,9 @@ namespace NeuNotepad;
 public partial class MainWindow : Window
 {
     private readonly MainViewModel _viewModel;
+    private readonly HashSet<DocumentTab> _markdownPreviewTabs = new();
+    private readonly Dictionary<DocumentTab, TextEditor> _editors = new();
+    private readonly Dictionary<DocumentTab, FlowDocumentScrollViewer> _markdownPreviewViewers = new();
     private bool _viewModelDisposed;
 
     public MainWindow()
@@ -32,8 +37,10 @@ public partial class MainWindow : Window
         _viewModel.StatusChanged += status => StatusText.Text = status;
         _viewModel.EncodingChanged += encoding => EncodingText.Text = encoding;
         _viewModel.TabAdded += tab => TabControl.SelectedItem = tab;
+        _viewModel.TabClosed += CleanupClosedTab;
         _viewModel.JsonError += error => MessageBox.Show(error, "JSON Error", 
             MessageBoxButton.OK, MessageBoxImage.Warning);
+        _viewModel.MarkdownPreviewToggleRequested += ToggleMarkdownPreview;
 
         // Initialize and restore session
         Loaded += (s, e) => _viewModel.Initialize();
@@ -78,6 +85,7 @@ public partial class MainWindow : Window
             if (editor != null)
             {
                 _viewModel.SetCurrentEditor(editor);
+                ApplyMarkdownPreviewState(editor, tab);
             }
         }
     }
@@ -136,6 +144,8 @@ public partial class MainWindow : Window
     {
         if (sender is TextEditor editor && editor.DataContext is DocumentTab tab)
         {
+            _editors[tab] = editor;
+
             // Enable built-in find (Ctrl+F) for each editor instance
             try
             {
@@ -148,6 +158,7 @@ public partial class MainWindow : Window
 
             // Apply JSON highlighting if it's a JSON file
             ApplyHighlighting(editor, tab);
+            ApplyMarkdownPreviewState(editor, tab);
             
             // Track caret position
             editor.TextArea.Caret.PositionChanged += (s, args) =>
@@ -173,6 +184,17 @@ public partial class MainWindow : Window
                         editor.SyntaxHighlighting = JsonHighlightingLoader.GetJsonHighlighting();
                     }
                 }
+
+                if (_markdownPreviewTabs.Contains(tab))
+                {
+                    var previewViewer = FindMarkdownPreviewViewer(editor);
+                    if (previewViewer != null)
+                    {
+                        previewViewer.Document = MarkdownPreviewRenderer.Render(tab.Document.Text);
+                    }
+                }
+
+                _viewModel.OnDocumentTextChanged(tab);
             };
 
             // Monitor for file extension changes (for highlighting)
@@ -186,11 +208,39 @@ public partial class MainWindow : Window
         }
     }
 
+    private void MarkdownPreview_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is FlowDocumentScrollViewer previewViewer && previewViewer.DataContext is DocumentTab tab)
+        {
+            _markdownPreviewViewers[tab] = previewViewer;
+
+            if (_editors.TryGetValue(tab, out var editor))
+            {
+                ApplyMarkdownPreviewState(editor, tab);
+            }
+        }
+    }
+
+    private void CleanupClosedTab(DocumentTab tab)
+    {
+        _markdownPreviewTabs.Remove(tab);
+        _editors.Remove(tab);
+
+        if (_markdownPreviewViewers.Remove(tab, out var previewViewer))
+        {
+            previewViewer.Document = null;
+        }
+    }
+
     private void ApplyHighlighting(TextEditor editor, DocumentTab tab)
     {
         if (tab.IsJsonFile || IsJsonContent(tab.Document.Text))
         {
             editor.SyntaxHighlighting = JsonHighlightingLoader.GetJsonHighlighting();
+        }
+        else if (IsMarkdownFile(tab.FilePath))
+        {
+            editor.SyntaxHighlighting = ICSharpCode.AvalonEdit.Highlighting.HighlightingManager.Instance.GetDefinition("MarkDown");
         }
         else
         {
@@ -230,6 +280,13 @@ public partial class MainWindow : Window
         return false;
     }
 
+    private static bool IsMarkdownFile(string? filePath)
+    {
+        var extension = filePath != null ? Path.GetExtension(filePath) : string.Empty;
+        return extension.Equals(".md", StringComparison.OrdinalIgnoreCase) ||
+               extension.Equals(".markdown", StringComparison.OrdinalIgnoreCase);
+    }
+
     private void UpdateEncodingDisplay(DocumentTab tab)
     {
         var encodingName = tab.Encoding.EncodingName;
@@ -257,8 +314,77 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ToggleMarkdownPreview()
+    {
+        if (_viewModel.CurrentTab == null)
+        {
+            StatusText.Text = "Markdown preview: no active tab";
+            return;
+        }
+
+        TabControl.UpdateLayout();
+
+        var editor = GetCurrentEditor();
+        var previewViewer = GetCurrentMarkdownPreviewViewer();
+        if (editor == null || previewViewer == null)
+        {
+            StatusText.Text = $"Markdown preview failed: editor={(editor == null ? "missing" : "ok")}, viewer={(previewViewer == null ? "missing" : "ok")}, registered editors={_editors.Count}, viewers={_markdownPreviewViewers.Count}";
+            return;
+        }
+
+        if (_markdownPreviewTabs.Contains(_viewModel.CurrentTab))
+        {
+            _markdownPreviewTabs.Remove(_viewModel.CurrentTab);
+            ApplyMarkdownPreviewState(editor, _viewModel.CurrentTab);
+            editor.Focus();
+            StatusText.Text = $"Markdown preview hidden for {_viewModel.CurrentTab.FileName}";
+        }
+        else
+        {
+            _markdownPreviewTabs.Add(_viewModel.CurrentTab);
+            previewViewer.Document = MarkdownPreviewRenderer.Render(_viewModel.CurrentTab.Document.Text);
+            ApplyMarkdownPreviewState(editor, _viewModel.CurrentTab);
+            StatusText.Text = $"Markdown preview shown for {_viewModel.CurrentTab.FileName}";
+        }
+    }
+
+    private void ToggleMarkdownPreview_Click(object sender, RoutedEventArgs e)
+    {
+        StatusText.Text = "Markdown preview button clicked";
+        ToggleMarkdownPreview();
+    }
+
+    private void ApplyMarkdownPreviewState(TextEditor editor, DocumentTab tab)
+    {
+        var previewViewer = _markdownPreviewViewers.TryGetValue(tab, out var registeredPreviewViewer)
+            ? registeredPreviewViewer
+            : FindMarkdownPreviewViewer(editor);
+        if (previewViewer == null)
+        {
+            StatusText.Text = $"Markdown preview failed: preview viewer not found for {tab.FileName}";
+            return;
+        }
+
+        if (_markdownPreviewTabs.Contains(tab))
+        {
+            previewViewer.Document = MarkdownPreviewRenderer.Render(tab.Document.Text);
+            previewViewer.Visibility = Visibility.Visible;
+            editor.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            previewViewer.Visibility = Visibility.Collapsed;
+            editor.Visibility = Visibility.Visible;
+        }
+    }
+
     private TextEditor? GetCurrentEditor()
     {
+        if (TabControl.SelectedItem is DocumentTab tab && _editors.TryGetValue(tab, out var editor))
+        {
+            return editor;
+        }
+
         if (TabControl.SelectedItem == null) return null;
         
         var container = TabControl.ItemContainerGenerator.ContainerFromItem(TabControl.SelectedItem) as TabItem;
@@ -269,6 +395,32 @@ public partial class MainWindow : Window
         
         var template = contentPresenter.ContentTemplate;
         return template?.FindName("Editor", contentPresenter) as TextEditor;
+    }
+
+    private FlowDocumentScrollViewer? GetCurrentMarkdownPreviewViewer()
+    {
+        if (TabControl.SelectedItem is DocumentTab tab && _markdownPreviewViewers.TryGetValue(tab, out var previewViewer))
+        {
+            return previewViewer;
+        }
+
+        if (TabControl.SelectedItem == null) return null;
+
+        var container = TabControl.ItemContainerGenerator.ContainerFromItem(TabControl.SelectedItem) as TabItem;
+        if (container == null) return null;
+
+        var contentPresenter = FindVisualChild<ContentPresenter>(container);
+        if (contentPresenter == null) return null;
+
+        var template = contentPresenter.ContentTemplate;
+        return template?.FindName("MarkdownPreview", contentPresenter) as FlowDocumentScrollViewer;
+    }
+
+    private static FlowDocumentScrollViewer? FindMarkdownPreviewViewer(TextEditor editor)
+    {
+        return editor.Parent is DependencyObject parent
+            ? FindVisualChild<FlowDocumentScrollViewer>(parent)
+            : null;
     }
 
     private static T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
