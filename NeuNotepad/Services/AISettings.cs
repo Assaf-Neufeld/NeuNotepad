@@ -21,7 +21,7 @@ public class AISettings
     /// <summary>
     /// Whether AI-powered smart titles are enabled.
     /// </summary>
-    public bool SmartTitlesEnabled { get; set; } = true;
+    public bool SmartTitlesEnabled { get; set; }
 
     /// <summary>
     /// Path to the ONNX model folder (e.g., Phi-3-mini).
