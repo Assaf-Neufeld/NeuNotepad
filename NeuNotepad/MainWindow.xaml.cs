@@ -11,6 +11,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace NeuNotepad;
 
@@ -21,8 +22,7 @@ public partial class MainWindow : Window
 {
     private readonly MainViewModel _viewModel;
     private readonly HashSet<DocumentTab> _markdownPreviewTabs = new();
-    private readonly Dictionary<DocumentTab, TextEditor> _editors = new();
-    private readonly Dictionary<DocumentTab, FlowDocumentScrollViewer> _markdownPreviewViewers = new();
+    private readonly HashSet<TextEditor> _initializedEditors = new();
     private bool _viewModelDisposed;
 
     public MainWindow()
@@ -79,14 +79,16 @@ public partial class MainWindow : Window
         {
             _viewModel.CurrentTab = tab;
             UpdateEncodingDisplay(tab);
-            
-            // Update current editor reference when tab changes
-            var editor = GetCurrentEditor();
-            if (editor != null)
+
+            // A TabControl hosts the selected ContentTemplate in a shared presenter.
+            // Wait until that presenter has switched its DataContext before syncing it.
+            Dispatcher.BeginInvoke(() =>
             {
-                _viewModel.SetCurrentEditor(editor);
-                ApplyMarkdownPreviewState(editor, tab);
-            }
+                if (ReferenceEquals(TabControl.SelectedItem, tab))
+                {
+                    SyncActiveTabControls(tab);
+                }
+            }, DispatcherPriority.Loaded);
         }
     }
 
@@ -144,67 +146,64 @@ public partial class MainWindow : Window
     {
         if (sender is TextEditor editor && editor.DataContext is DocumentTab tab)
         {
-            _editors[tab] = editor;
-
-            // Enable built-in find (Ctrl+F) for each editor instance
-            try
+            if (_initializedEditors.Add(editor))
             {
-                SearchPanel.Install(editor.TextArea);
-            }
-            catch (InvalidOperationException)
-            {
-                // SearchPanel may already be installed if the editor is reloaded.
-            }
-
-            // Apply JSON highlighting if it's a JSON file
-            ApplyHighlighting(editor, tab);
-            ApplyMarkdownPreviewState(editor, tab);
-            
-            // Track caret position
-            editor.TextArea.Caret.PositionChanged += (s, args) =>
-            {
-                var line = editor.TextArea.Caret.Line;
-                var column = editor.TextArea.Caret.Column;
-                LineColumnText.Text = $"Ln {line}, Col {column}";
-            };
-
-            // Set the current editor in the view model
-            _viewModel.SetCurrentEditor(editor);
-
-            // Auto-detect JSON content when text changes
-            bool lastWasJson = false;
-            editor.TextChanged += (s, args) =>
-            {
-                var isJson = IsJsonContent(tab.Document.Text);
-                if (isJson != lastWasJson)
+                // Enable built-in find (Ctrl+F) for each editor instance
+                try
                 {
-                    lastWasJson = isJson;
-                    if (isJson && editor.SyntaxHighlighting == null)
+                    SearchPanel.Install(editor.TextArea);
+                }
+                catch (InvalidOperationException)
+                {
+                    // SearchPanel may already be installed if the editor is reloaded.
+                }
+
+                // Track caret position
+                editor.TextArea.Caret.PositionChanged += (s, args) =>
+                {
+                    var line = editor.TextArea.Caret.Line;
+                    var column = editor.TextArea.Caret.Column;
+                    LineColumnText.Text = $"Ln {line}, Col {column}";
+                };
+
+                // The TabControl reuses this editor when selection changes, so resolve
+                // the active tab from DataContext instead of capturing the first tab.
+                editor.TextChanged += (s, args) =>
+                {
+                    if (editor.DataContext is not DocumentTab activeTab)
+                    {
+                        return;
+                    }
+
+                    if (IsJsonContent(activeTab.Document.Text) && editor.SyntaxHighlighting == null)
                     {
                         editor.SyntaxHighlighting = JsonHighlightingLoader.GetJsonHighlighting();
                     }
-                }
 
-                if (_markdownPreviewTabs.Contains(tab))
-                {
-                    var previewViewer = FindMarkdownPreviewViewer(editor);
-                    if (previewViewer != null)
+                    if (_markdownPreviewTabs.Contains(activeTab))
                     {
-                        previewViewer.Document = MarkdownPreviewRenderer.Render(tab.Document.Text);
+                        var previewViewer = FindMarkdownPreviewViewer(editor);
+                        if (previewViewer != null)
+                        {
+                            previewViewer.Document = MarkdownPreviewRenderer.Render(activeTab.Document.Text);
+                        }
                     }
-                }
 
-                _viewModel.OnDocumentTextChanged(tab);
-            };
+                    _viewModel.OnDocumentTextChanged(activeTab);
+                };
 
-            // Monitor for file extension changes (for highlighting)
-            tab.PropertyChanged += (s, args) =>
-            {
-                if (args.PropertyName == nameof(DocumentTab.FilePath))
+                editor.DataContextChanged += (s, args) =>
                 {
-                    ApplyHighlighting(editor, tab);
-                }
-            };
+                    if (args.NewValue is DocumentTab activeTab)
+                    {
+                        SyncActiveTabControls(activeTab);
+                    }
+                };
+            }
+
+            ApplyHighlighting(editor, tab);
+            ApplyMarkdownPreviewState(editor, tab);
+            _viewModel.SetCurrentEditor(editor);
         }
     }
 
@@ -212,9 +211,8 @@ public partial class MainWindow : Window
     {
         if (sender is FlowDocumentScrollViewer previewViewer && previewViewer.DataContext is DocumentTab tab)
         {
-            _markdownPreviewViewers[tab] = previewViewer;
-
-            if (_editors.TryGetValue(tab, out var editor))
+            var editor = GetCurrentEditor();
+            if (editor != null)
             {
                 ApplyMarkdownPreviewState(editor, tab);
             }
@@ -224,12 +222,19 @@ public partial class MainWindow : Window
     private void CleanupClosedTab(DocumentTab tab)
     {
         _markdownPreviewTabs.Remove(tab);
-        _editors.Remove(tab);
+    }
 
-        if (_markdownPreviewViewers.Remove(tab, out var previewViewer))
+    private void SyncActiveTabControls(DocumentTab tab)
+    {
+        var editor = GetCurrentEditor();
+        if (editor == null)
         {
-            previewViewer.Document = null;
+            return;
         }
+
+        _viewModel.SetCurrentEditor(editor);
+        ApplyHighlighting(editor, tab);
+        ApplyMarkdownPreviewState(editor, tab);
     }
 
     private void ApplyHighlighting(TextEditor editor, DocumentTab tab)
@@ -328,7 +333,7 @@ public partial class MainWindow : Window
         var previewViewer = GetCurrentMarkdownPreviewViewer();
         if (editor == null || previewViewer == null)
         {
-            StatusText.Text = $"Markdown preview failed: editor={(editor == null ? "missing" : "ok")}, viewer={(previewViewer == null ? "missing" : "ok")}, registered editors={_editors.Count}, viewers={_markdownPreviewViewers.Count}";
+            StatusText.Text = $"Markdown preview failed: editor={(editor == null ? "missing" : "ok")}, viewer={(previewViewer == null ? "missing" : "ok")}";
             return;
         }
 
@@ -356,9 +361,7 @@ public partial class MainWindow : Window
 
     private void ApplyMarkdownPreviewState(TextEditor editor, DocumentTab tab)
     {
-        var previewViewer = _markdownPreviewViewers.TryGetValue(tab, out var registeredPreviewViewer)
-            ? registeredPreviewViewer
-            : FindMarkdownPreviewViewer(editor);
+        var previewViewer = FindMarkdownPreviewViewer(editor) ?? GetCurrentMarkdownPreviewViewer();
         if (previewViewer == null)
         {
             StatusText.Text = $"Markdown preview failed: preview viewer not found for {tab.FileName}";
@@ -380,40 +383,16 @@ public partial class MainWindow : Window
 
     private TextEditor? GetCurrentEditor()
     {
-        if (TabControl.SelectedItem is DocumentTab tab && _editors.TryGetValue(tab, out var editor))
-        {
-            return editor;
-        }
-
-        if (TabControl.SelectedItem == null) return null;
-        
-        var container = TabControl.ItemContainerGenerator.ContainerFromItem(TabControl.SelectedItem) as TabItem;
-        if (container == null) return null;
-        
-        var contentPresenter = FindVisualChild<ContentPresenter>(container);
-        if (contentPresenter == null) return null;
-        
-        var template = contentPresenter.ContentTemplate;
-        return template?.FindName("Editor", contentPresenter) as TextEditor;
+        return TabControl.SelectedItem == null
+            ? null
+            : FindVisualChild<TextEditor>(TabControl);
     }
 
     private FlowDocumentScrollViewer? GetCurrentMarkdownPreviewViewer()
     {
-        if (TabControl.SelectedItem is DocumentTab tab && _markdownPreviewViewers.TryGetValue(tab, out var previewViewer))
-        {
-            return previewViewer;
-        }
-
-        if (TabControl.SelectedItem == null) return null;
-
-        var container = TabControl.ItemContainerGenerator.ContainerFromItem(TabControl.SelectedItem) as TabItem;
-        if (container == null) return null;
-
-        var contentPresenter = FindVisualChild<ContentPresenter>(container);
-        if (contentPresenter == null) return null;
-
-        var template = contentPresenter.ContentTemplate;
-        return template?.FindName("MarkdownPreview", contentPresenter) as FlowDocumentScrollViewer;
+        return TabControl.SelectedItem == null
+            ? null
+            : FindVisualChild<FlowDocumentScrollViewer>(TabControl);
     }
 
     private static FlowDocumentScrollViewer? FindMarkdownPreviewViewer(TextEditor editor)
